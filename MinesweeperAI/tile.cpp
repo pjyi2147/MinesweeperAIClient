@@ -18,6 +18,19 @@ Tile::Tile(int col, int row)
 	//this->_revealed = true;
 }
 
+Tile::Tile(Tile& t)
+{
+	this->_mine = t.isMine();
+	this->_revealed = t.isRevealed();
+	this->_flagged = t.isFlagged();
+
+	this->_neighborCount = t.returnNeighborCount();
+	this->_done = t.isDone();
+	
+	this->_col = t.returnCol();
+	this->_row = t.returnRow();
+}
+
 void Tile::printTile()
 {
 	std::cout << "|";
@@ -89,6 +102,11 @@ void Tile::setFlag()
 {
 	if (this->_flagged) this->_flagged = false;
 	else this->_flagged = true;
+}
+
+void Tile::setFlag(bool set)
+{
+	this->_flagged = set;
 }
 
 // set NeighborCount

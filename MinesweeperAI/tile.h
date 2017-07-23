@@ -14,6 +14,7 @@ private:
 
 public:
 	Tile();
+	Tile(Tile& t);
 	Tile(int col, int row);
 
 	void reveal();
@@ -30,6 +31,7 @@ public:
 
 	void setMine();
 	void setFlag();
+	void setFlag(bool set);
 	void setNeighborCount(int count);
 	void setDone(bool done);
 };
