@@ -21,6 +21,7 @@ private:
 
 public:
 	MineSweeper(int col, int row, int mineNum);
+	MineSweeper(MineSweeper& m);
 	~MineSweeper();
 
 	void update(nlohmann::json info);
@@ -28,6 +29,8 @@ public:
 	void countMine(int col, int row);
 	int countFlag(int col, int row);
 	int countCovered(int col, int row);
+	int countAllFlagged();
+	int countAllCovered();
 
 	void createMinefield(int col, int row);
 	void printMineField();
@@ -40,6 +43,7 @@ public:
 
 	void setGameEnd(bool finished);
 	void setFlag(int col, int row);
+	void setFlag(int col, int row, bool flag);
 	void setWin(bool win);
 	void setDone(int col, int row, bool done);
 
@@ -52,4 +56,5 @@ public:
 	bool returnCovered(int col, int row);
 	int returnNeighborCount(int col, int row);
 	bool returnFlagged(int col, int row);
+	Tile returnTile(int col, int row);
 };

@@ -30,6 +30,27 @@ MineSweeper::MineSweeper(int col, int row, int mineNum)
 	}
 }
 
+MineSweeper::MineSweeper(MineSweeper& m)
+{
+	this->_mineNum = m.returnMineNum();
+	this->_col = m.returnCol();
+	this->_row = m.returnRow();
+
+	this->_minefield = new Tile*[_row];
+	for (int r = 0; r < _row; ++r)
+	{
+		this->_minefield[r] = new Tile[_col];
+	}
+
+	for (int r = 0; r < _row; ++r)
+	{
+		for (int c = 0; c < _col; ++c)
+		{
+			this->_minefield[r][c] = Tile(m.returnTile(c, r));
+		}
+	}
+}
+
 MineSweeper::~MineSweeper()
 {
 	for (int r = 0; r < this->returnRow(); ++r)
@@ -77,7 +98,8 @@ void MineSweeper::update(json info)
 		// when mined;
 		else if (k == 'M')
 		{
-			// do nothing for now;
+			this->_minefield[row][col].reveal();
+			this->_minefield[row][col].setMine();
 		}
 	}
 }
@@ -178,8 +200,8 @@ void MineSweeper::revealTile(int col, int row)
 		{
 			for (int xoff = -1; xoff <= 1; ++xoff)
 			{
-				int c = this->_minefield[row][col].returnCol() + xoff;
-				int r = this->_minefield[row][col].returnRow() + yoff;
+				int c = col + xoff;
+				int r = row + yoff;
 
 				if (c > -1 && c < this->returnCol() && r > -1
 					&& r < this->returnRow())
@@ -207,8 +229,8 @@ void MineSweeper::revealDoubleClick(int col, int row)
 		{
 			if (xoff != 0 || yoff != 0)
 			{
-				int c = tile.returnCol() + xoff;
-				int r = tile.returnRow() + yoff;
+				int c = col + xoff;
+				int r = row + yoff;
 
 				// within range
 				if (c > -1 && c < this->returnCol() && r > -1
@@ -237,8 +259,8 @@ void MineSweeper::countMine(int col, int row)
 	{
 		for (int xoff = -1; xoff <= 1; ++xoff)
 		{
-			int c = this->_minefield[row][col].returnCol() + xoff;
-			int r = this->_minefield[row][col].returnRow() + yoff;
+			int c = col + xoff;
+			int r = row + yoff;
 
 			if (c > -1 && c < this->returnCol()
 				&& r > -1 && r < this->returnRow())
@@ -259,8 +281,8 @@ int MineSweeper::countFlag(int col, int row)
 		{
 			if (xoff != 0 || yoff != 0)
 			{
-				int c = this->_minefield[row][col].returnCol() + xoff;
-				int r = this->_minefield[row][col].returnRow() + yoff;
+				int c = col + xoff;
+				int r = row + yoff;
 
 				if (c > -1 && c < this->returnCol()
 					&& r > -1 && r < this->returnRow())
@@ -282,8 +304,8 @@ int MineSweeper::countCovered(int col, int row)
 		{
 			if (xoff != 0 || yoff != 0)
 			{
-				int c = this->_minefield[row][col].returnCol() + xoff;
-				int r = this->_minefield[row][col].returnRow() + yoff;
+				int c = col + xoff;
+				int r = row + yoff;
 
 				if (c > -1 && c < this->returnCol()
 					&& r > -1 && r < this->returnRow())
@@ -291,6 +313,34 @@ int MineSweeper::countCovered(int col, int row)
 					if (!this->_minefield[r][c].isRevealed()) total += 1;
 				}
 			}
+		}
+	}
+	return total;
+}
+
+int MineSweeper::countAllCovered()
+{
+	int total = 0;
+	for (int r = 0; r < this->returnRow(); ++r)
+	{
+		for (int c = 0; c < this->returnCol(); ++c)
+		{
+			if (!this->_minefield[r][c].isRevealed())
+				++total;
+		}
+	}
+	return total;
+}
+
+int MineSweeper::countAllFlagged()
+{
+	int total = 0;
+	for (int r = 0; r < this->returnRow(); ++r)
+	{
+		for (int c = 0; c < this->returnCol(); ++c)
+		{
+			if (this->_minefield[r][c].isFlagged())
+				++total;
 		}
 	}
 	return total;
@@ -335,6 +385,12 @@ void MineSweeper::setFlag(int col, int row)
 	else cout << "You cannot flag tiles that are already open" << endl;
 }
 
+void MineSweeper::setFlag(int col, int row, bool set)
+{
+	if (!this->_minefield[row][col].isRevealed())
+		this->_minefield[row][col].setFlag(set);
+	else cout << "You cannot flag tiles that are already open" << endl;
+}
 void MineSweeper::setWin(bool win)
 {
 	this->_win = win;
@@ -395,4 +451,9 @@ int MineSweeper::returnNeighborCount(int col, int row)
 bool MineSweeper::returnFlagged(int col, int row)
 {
 	return this->_minefield[row][col].isFlagged();
+}
+
+Tile MineSweeper::returnTile(int col, int row)
+{
+	return this->_minefield[row][col];
 }
