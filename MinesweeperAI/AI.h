@@ -1,11 +1,13 @@
 #pragma once
 
+bool compare(pair<int, int> i, pair<int, int> j);
+
 void AI(MineSweeper* m, nlohmann::json* to_send);
 
 void basicFlagging(MineSweeper* m, vector<string>* orders);
 void basicDoubleClicking(MineSweeper* m, vector<string>* orders);
 
-void tankSolver(MineSweeper* m, int bruteforcesize);
+void tankSolver(MineSweeper* m, vector<string>* orders);
 void tankRecurse(vector<int> section, MineSweeper* m, bool borderOptimization, vector<map<int, bool>>* solutions, int*);
 void randomGuess(MineSweeper* m, vector<string>* orders);
 

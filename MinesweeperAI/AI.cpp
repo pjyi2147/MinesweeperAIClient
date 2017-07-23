@@ -12,6 +12,10 @@
 using namespace std;
 using json = nlohmann::json;
 
+bool compare(pair<int, int> i, pair<int,int> j) {
+	return i.second < j.second;
+}
+
 string doubleClick(int col, int row)
 {
 	stringstream s;
@@ -235,15 +239,16 @@ vector< vector<int> > getConnectedBorderTiles(MineSweeper *m, vector<int> border
 
 void randomGuess(MineSweeper* m, vector<string>* orders)
 {
-	vector<int> borderTiles = getBorderTiles(m);
+	vector<int> emptyTiles = getEmptyTiles(m);
 	srand(time(NULL));
-	int k = borderTiles[rand() % borderTiles.size()];
+	int k = emptyTiles[rand() % emptyTiles.size()];
 	int col = k % m->returnCol(), row = k / m->returnCol();
 	orders->push_back(simpleClick(col, row));
 	cout << "AI guessed Col: " << col << " Row: " << row << " randomly from bordertiles" << endl;
 }
 
-void tankRecurse(vector<int> section, MineSweeper* m, int k, bool borderOptimization, vector<map<int, bool>>* solutions, int* test)
+void tankRecurse(vector<int> section, MineSweeper* m, int k, 
+	bool borderOptimization, vector<map<int, bool>>* solutions, int* test)
 {
 	++(*test);
 	int flagCount = m->countAllFlagged();
@@ -253,6 +258,8 @@ void tankRecurse(vector<int> section, MineSweeper* m, int k, bool borderOptimiza
 	
 	// if the flagcount is bigger than the neighborcount already?
 	// then, return before it goes through more recursion.
+	// for more optimization, the open tiles for the section can be
+	// put into a container to be looped
 	for (auto& tile1 : section)
 	{
 		int tCol1 = tile1 % mineCol, tRow1 = tile1 / mineCol;
@@ -333,12 +340,13 @@ void tankRecurse(vector<int> section, MineSweeper* m, int k, bool borderOptimiza
 }
 
 
-void tankSolver(MineSweeper* m, int bruteforceSize = 8)
+void tankSolver(MineSweeper* m, vector<string>* orders)
 {
 	auto borderTiles = getBorderTiles(m);
 	auto emptyTiles = getEmptyTiles(m);
+	int bruteforceSize = 8;				// ????
 	int test = 0;
-	vector< vector <int> > connectedTiles;
+	vector< vector<int> > connectedTiles;
 	vector< vector< map<int, bool> > > bigSolutions;
 	bool borderOptimization = false;
 	if (m->countAllCovered() - borderTiles.size() > bruteforceSize)
@@ -350,20 +358,102 @@ void tankSolver(MineSweeper* m, int bruteforceSize = 8)
 	
 	if (connectedTiles.size() == 0) {
 		cout << "Something went wrong... there is no bordertiles" << endl;
+		cout << "Therefore, AI will guess random empty tile" << endl;
+		randomGuess(m, orders);
 		system("pause");
 		return; // something is wrong...
 	}
 
-	for (int s = 0; s < connectedTiles.size(); ++s)
+	int size = connectedTiles.size();
+	for (int s = 0; s < size; ++s)
 	{
 		// not to cause a problem, create a copy of m
 		vector< map <int, bool> > solutions;
 		auto mcopy = MineSweeper(*m);
-		if (connectedTiles[s].size() >= 15) cout << "This recursion will take lots of time..." << endl;
-		tankRecurse(connectedTiles[s], &mcopy, 0, borderOptimization, &solutions, &test);
+		int conSize = connectedTiles[s].size();
+		cout << "Size of section: " << conSize << endl;
+		if (conSize >= 17) cout << "This recursion will take lots of time..." << endl;
+		if (conSize >= 25 && connectedTiles.size() == 1)
+		{
+			cout << "This recursion will take extreme amount of time..." << endl;
+			cout << "And there is only one section" << endl;
+			cout << "Therefore, it is a better choice to make a guess..." << endl;
+			randomGuess(m, orders);
+			return;
+		}
+		else if (conSize >= 25 && connectedTiles.size() >= 1)
+		{
+			cout << "This recursion will take extreme amount of time..." << endl;
+			cout << "But there are more than one section" << endl;
+			cout << "Therefore, it is a better choice to pass this section and come back later" << endl;
+			continue;
+		}
+		else 
+			tankRecurse(connectedTiles[s], &mcopy, 0, borderOptimization, &solutions, &test);
 		bigSolutions.push_back(solutions);
 	}
+	
+	vector< map<int, int>> sectionSum;
+	for (auto& sectionSol : bigSolutions)
+	{
+		map<int, int> sectionCount;
+		for (auto& solution : sectionSol)
+		{
+			for (auto& tile : solution)
+			{
+				int location = tile.first;
+				bool isMine = tile.second;
+				auto finditerator = sectionCount.find(tile.first);
+				if (finditerator == sectionCount.end())
+				{
+					sectionCount[location] = 0;
+					if (isMine) ++sectionCount[location];
+				}
+				else if (isMine) ++(finditerator->second);
+			}
+		}
+		sectionSum.push_back(sectionCount);
+	}
 
+	for (auto& section : sectionSum)
+	{
+		section[9999] = 0;
+		for (auto& location : section)
+		{
+			if (location.first != 9999)
+				section[9999] += location.second;
+		}
+	}
+
+	if (sectionSum.size() > 1)
+	{
+		vector<int> tileStore;
+		vector<double> probStore;
+		for (auto& section : sectionSum)
+		{
+			auto min = *min_element(section.begin(), section.end(), compare);
+			int total = section[9999];
+			tileStore.push_back(min.first);
+			probStore.push_back(double(min.second) / double(total) * 100);
+		}
+		int dis = distance(probStore.begin(), min_element(probStore.begin(), probStore.end()));
+		int tile = tileStore[dis];
+		int col = tile % m->returnCol(), row = tile / m->returnCol();
+		std::cout << "AI chosed Col: " << col << " Row: " << row << " with the chance of "
+			<< probStore[dis] << "%"
+			<< " the tile being mine" << std::endl;
+		orders->push_back(simpleClick(col, row));
+	}
+	else
+	{
+		auto section = sectionSum[0];
+		auto min = *min_element(section.begin(), section.end(), compare);
+		int col = min.first % m->returnCol(), row = min.first / m->returnCol();
+		std::cout << "AI chosed Col: " << col << " Row: " << row << " with the chance of " 
+			<< float(min.second) / float(section[9999]) * 100 << "%" 
+			<< " the tile being mine" << std::endl;
+		orders->push_back(simpleClick(col, row));
+	}
 	cout << endl << "tankRecurse was called " << test << " times. " << endl << endl;
 
 	return; // do nothing 
@@ -383,8 +473,7 @@ void AI(MineSweeper* m, json* to_send)
 	if (orders.size() == 0)
 	{
 		cout << "Guesses start..." << endl;
-		tankSolver(m);
-		randomGuess(m, &orders);
+		tankSolver(m, &orders);
 		system("pause");
 	}
 	(*to_send)["orders"] = orders;
